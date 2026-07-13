@@ -1,0 +1,1042 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Control Panel - Agente de Ventas IA</title>
+  <!-- CSS Personalizado -->
+  <link rel="stylesheet" href="/static/css/style.css">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="logo-container">
+      <div class="logo-icon"><i class="fa-solid fa-robot"></i></div>
+      <div class="logo-text">Bingo Sales AI</div>
+    </div>
+    <ul class="nav-menu">
+      <li class="nav-item active" onclick="switchTab('dashboard')">
+        <i class="fa-solid fa-chart-simple"></i> Dashboard & Campañas
+      </li>
+      <li class="nav-item" onclick="switchTab('leads')">
+        <i class="fa-solid fa-users"></i> Prospectos / Leads
+      </li>
+      <li class="nav-item" onclick="switchTab('evolution')">
+        <i class="fa-brands fa-whatsapp"></i> Conectar WhatsApp
+      </li>
+      <li class="nav-item" onclick="switchTab('config')">
+        <i class="fa-solid fa-gear"></i> Configuración Bingo
+      </li>
+      <li class="nav-item" onclick="switchTab('knowledge')">
+        <i class="fa-solid fa-brain"></i> Base de Conocimiento
+      </li>
+      <li class="nav-item" onclick="switchTab('simulator')">
+        <i class="fa-solid fa-comments"></i> Simulador de Chat
+      </li>
+    </ul>
+    <div class="sidebar-footer">
+      <p>Desarrollado con Gemini 1.5</p>
+      <p>v1.0.0</p>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main-content">
+    
+    <!-- HEADER -->
+    <div class="header">
+      <div class="page-title">
+        <h1 id="main-title">Dashboard & Campañas</h1>
+        <p id="main-subtitle">Control de ventas masivas y comportamiento de la IA</p>
+      </div>
+      
+      <div class="api-status-badge" id="wa-status-badge">
+        <span class="badge-dot inactive" id="wa-status-dot"></span>
+        <span id="wa-status-text">WhatsApp: Verificando...</span>
+      </div>
+    </div>
+
+    <!-- ALERTA DE CONFIGURACIÓN DE GEMINI -->
+    {% if not gemini_configured %}
+    <div class="alert-gemini-warning">
+      <i class="fa-solid fa-triangle-exclamation"></i>
+      <div>
+        <strong>¡Falta la API Key de Gemini!</strong> Edita el archivo <code>.env</code> y coloca tu <code>GEMINI_API_KEY</code> para activar la inteligencia artificial de persuasión.
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- TAB: DASHBOARD & CAMPAÑAS -->
+    <div id="tab-dashboard" class="tab-content active">
+      <!-- Estadísticas rápidas -->
+      <div class="grid-stats">
+        <div class="stat-card">
+          <div class="stat-info">
+            <h3>Prospectos Totales</h3>
+            <p id="stat-total-leads">0</p>
+          </div>
+          <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <h3>Cartones Vendidos</h3>
+            <p id="stat-sold-leads">0</p>
+          </div>
+          <div class="stat-icon"><i class="fa-solid fa-ticket"></i></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-info">
+            <h3>Tasa de Interés</h3>
+            <p id="stat-conversion-rate">0%</p>
+          </div>
+          <div class="stat-icon"><i class="fa-solid fa-chart-line"></i></div>
+        </div>
+      </div>
+
+      <!-- Campaña activa -->
+      <div class="glass-card">
+        <div class="card-header">
+          <div>
+            <h2>Iniciar Campaña de Venta Activa</h2>
+            <p>Envía mensajes de invitación automatizados. La IA responderá cuando respondan.</p>
+          </div>
+        </div>
+        
+        <form id="campaign-form" onsubmit="runCampaign(event)">
+          <div class="form-group">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+              <label for="campaign-numbers" style="margin-bottom: 0;">Números de Teléfono (Uno por línea, con código de país, ej: 51999888777)</label>
+              <div style="display: flex; gap: 0.5rem;">
+                <button type="button" class="btn btn-secondary" onclick="loadContacts(false)" id="btn-load-all" style="padding: 0.3rem 0.7rem; font-size: 0.78rem; white-space: nowrap;">
+                  <i class="fa-solid fa-address-book"></i> Toda la agenda
+                </button>
+                <button type="button" class="btn btn-primary" onclick="loadContacts(true)" id="btn-load-chats" style="padding: 0.3rem 0.7rem; font-size: 0.78rem; white-space: nowrap;">
+                  <i class="fa-solid fa-comments"></i> Solo chats activos
+                </button>
+              </div>
+            </div>
+            <textarea class="form-control" id="campaign-numbers" rows="5" placeholder="51999888777&#10;51988888888" required></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="campaign-message">Mensaje Inicial (Sofía lo enviará para abrir conversación)</label>
+            <textarea class="form-control" id="campaign-message" rows="3" required>¡Hola! 🎉 Qué tal, espero que estés súper bien. Te escribo porque este sábado jugamos nuestro Gran Bingo de la Vecindad con premios increíbles. ¿Te enteraste de los premios que tenemos esta semana? 🎟️🎰</textarea>
+          </div>
+
+          <div style="display: flex; gap: 1rem; align-items: center;">
+            <button type="submit" class="btn btn-primary" id="btn-campaign">
+              <i class="fa-solid fa-paper-plane"></i> Iniciar Envío de Campaña
+            </button>
+            <span id="campaign-status-log" style="color: var(--text-secondary); font-size: 0.9rem;"></span>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- TAB: LEADS / PROSPECTOS -->
+    <div id="tab-leads" class="tab-content">
+      <div class="glass-card">
+        <div class="card-header">
+          <div>
+            <h2>Lista de Clientes Interesados</h2>
+            <p>Aquí se registran las personas contactadas y su nivel de interés captado por la IA</p>
+          </div>
+        </div>
+
+        <div class="table-container">
+          <table class="custom-table">
+            <thead>
+              <tr>
+                <th>Nombre / Alias</th>
+                <th>WhatsApp</th>
+                <th>Estado de Venta</th>
+                <th>Última Actividad</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody id="leads-table-body">
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--text-secondary);">Cargando prospectos...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: CONECTAR WHATSAPP (EVOLUTION) -->
+    <div id="tab-evolution" class="tab-content">
+      <div class="glass-card">
+        <div class="card-header">
+          <div>
+            <h2>Conexión a WhatsApp con Evolution API</h2>
+            <p>Escanea el código QR desde tu WhatsApp celular para dar de alta al bot.</p>
+          </div>
+        </div>
+
+        <div class="qr-container">
+          <div class="qr-box" id="qr-display-box">
+            <p style="color: var(--text-secondary);">Presiona "Conectar" para generar el código QR</p>
+          </div>
+
+          <div style="margin-top: 1rem; display: flex; gap: 1rem;">
+            <button class="btn btn-primary" onclick="initiateEvolutionConnect()" id="btn-connect-wa">
+              <i class="fa-solid fa-qrcode"></i> Conectar WhatsApp / Generar QR
+            </button>
+            <button class="btn btn-secondary" onclick="checkWaStatus(true)">
+              <i class="fa-solid fa-rotate"></i> Actualizar Estado
+            </button>
+          </div>
+
+          <span class="qr-status-indicator" id="qr-status-label" style="display: none;"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: CONFIGURACIÓN BINGO -->
+    <div id="tab-config" class="tab-content">
+      <div class="glass-card">
+        <div class="card-header">
+          <div>
+            <h2>Ajustes del Bingo y Lógica de Venta</h2>
+            <p>Define los datos oficiales del juego que el agente de IA usará para vender.</p>
+          </div>
+        </div>
+
+        <form id="config-form" onsubmit="saveConfig(event)">
+          <div class="form-group">
+            <label for="config-prize-pool">Premios en Juego (Detalla los montos y premios de forma atractiva)</label>
+            <textarea class="form-control" id="config-prize-pool" rows="4" required>{{ config.prize_pool }}</textarea>
+          </div>
+
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+            <div class="form-group">
+              <label for="config-ticket-price">Precio del Cartón (S/.)</label>
+              <input type="number" step="0.10" class="form-control" id="config-ticket-price" value="{{ config.ticket_price }}" required>
+            </div>
+            <div class="form-group">
+              <label for="config-date-time">Fecha y Hora del Evento</label>
+              <input type="text" class="form-control" id="config-date-time" value="{{ config.date_time }}" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="config-payment-details">Detalles e Instrucciones de Pago (Yape, cuentas bancarias, etc.)</label>
+            <textarea class="form-control" id="config-payment-details" rows="3" required>{{ config.payment_details }}</textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="config-special-offers">Ofertas Especiales / Descuentos por volumen</label>
+            <textarea class="form-control" id="config-special-offers" rows="2">{{ config.special_offers }}</textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="config-rules">Reglas Generales de Transmisión y Seguridad</label>
+            <textarea class="form-control" id="config-rules" rows="3">{{ config.rules }}</textarea>
+          </div>
+
+          <button type="submit" class="btn btn-success">
+            <i class="fa-solid fa-floppy-disk"></i> Guardar Configuración
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- TAB: BASE DE CONOCIMIENTO RAG -->
+    <div id="tab-knowledge" class="tab-content">
+      <div class="glass-card">
+        <div class="card-header">
+          <div>
+            <h2>📚 Documentos Indexados</h2>
+            <p>Sofía consultará estos documentos automáticamente para responder mejor a los clientes.</p>
+          </div>
+        </div>
+        <div id="rag-doc-list" style="margin-top: 1rem;">
+          <p style="color: var(--text-secondary);">Cargando...</p>
+        </div>
+      </div>
+
+      <div class="glass-card" style="margin-top: 1.5rem;">
+        <div class="card-header">
+          <div>
+            <h2>➕ Agregar Nuevo Documento</h2>
+            <p>Pega el texto que quieres que Sofía sepa: reglas, FAQ, videos tutoriales, premios anteriores, etc.</p>
+          </div>
+        </div>
+        <form onsubmit="addKnowledgeDoc(event)" style="margin-top: 1rem;">
+          <div class="form-group">
+            <label for="rag-title">Título del documento</label>
+            <input type="text" class="form-control" id="rag-title" placeholder="Ej: Tutorial de cómo jugar el Bingo, FAQ de pagos, Premios edición julio 2025..." required>
+          </div>
+          <div class="form-group">
+            <label for="rag-content">Contenido</label>
+            <textarea class="form-control" id="rag-content" rows="8" placeholder="Pega aquí el texto completo. Puede ser el link de un video de YouTube, las reglas del juego, preguntas frecuentes, métodos de pago detallados, etc." required></textarea>
+          </div>
+          <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+            <button type="submit" class="btn btn-primary" id="btn-rag-add">
+              <i class="fa-solid fa-plus"></i> Agregar a la base de conocimiento
+            </button>
+            <span id="rag-add-status" style="font-size: 0.9rem;"></span>
+          </div>
+        </form>
+      </div>
+
+      <div class="glass-card" style="margin-top: 1.5rem;">
+        <div class="card-header">
+          <div>
+            <h2>🔍 Probar Búsqueda RAG</h2>
+            <p>Simula la pregunta de un cliente y comprueba qué contexto recuperará Sofía para responder.</p>
+          </div>
+        </div>
+        <form onsubmit="testRagSearch(event)" style="margin-top: 1rem;">
+          <div class="form-group">
+            <label for="rag-test-query">Pregunta de prueba</label>
+            <input type="text" class="form-control" id="rag-test-query" placeholder="Ej: ¿hay un video de cómo se juega? ¿Cuánto cuesta? ¿Cómo pago con Yape?">
+          </div>
+          <button type="submit" class="btn btn-secondary">
+            <i class="fa-solid fa-magnifying-glass"></i> Buscar en la base de conocimiento
+          </button>
+        </form>
+        <div id="rag-test-result" style="margin-top: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px; font-size: 0.9rem; white-space: pre-wrap; min-height: 3rem; color: var(--text-secondary);">
+          El resultado aparecerá aquí...
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: SIMULADOR DE CHAT -->
+    <div id="tab-simulator" class="tab-content">
+      <div class="glass-card" style="padding: 1.5rem;">
+        <div class="card-header" style="margin-bottom: 1rem;">
+          <div>
+            <h2>Prueba al Agente Autónomo (Simulador Web)</h2>
+            <p>Chatea con el agente como si fueras un cliente para probar su persuasión, sin gastar saldo ni vincular teléfonos.</p>
+          </div>
+        </div>
+
+        <div class="chat-layout">
+          <!-- Chat Sidebar (Active Simulator Leads) -->
+          <div class="chat-sidebar">
+            <div class="chat-sidebar-header">
+              <button class="btn btn-primary" style="width: 100%; font-size: 0.85rem; padding: 0.5rem;" onclick="createNewSimLead()">
+                <i class="fa-solid fa-plus"></i> Nuevo Cliente de Prueba
+              </button>
+            </div>
+            <div class="contact-list" id="sim-contact-list">
+              <!-- Dynamically populated -->
+            </div>
+          </div>
+
+          <!-- Chat Area -->
+          <div class="chat-area" id="chat-area-container" style="display: none;">
+            <div class="chat-header">
+              <div class="chat-active-contact">
+                <div class="avatar" id="chat-active-avatar">UP</div>
+                <div>
+                  <div class="active-contact-name" id="chat-active-name">Usuario Prueba</div>
+                  <div class="active-contact-status">
+                    <span class="badge-dot active"></span>
+                    <span id="chat-active-phone">123456789</span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <select id="chat-lead-status-select" onchange="updateActiveLeadStatus(this.value)" class="form-control" style="padding: 0.25rem 0.5rem; font-size: 0.8rem; width: auto;">
+                  <option value="Interesado">Interesado</option>
+                  <option value="Interesado/Listo para pagar">Listo para pagar</option>
+                  <option value="Compró">Compró</option>
+                  <option value="No interesado">No interesado</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="chat-body" id="chat-messages-body">
+              <!-- Bubbles -->
+            </div>
+
+            <div class="chat-footer">
+              <div class="chat-input-wrapper">
+                <textarea id="chat-input-field" placeholder="Escribe un mensaje de prueba al bot..." onkeydown="handleChatInputKey(event)"></textarea>
+              </div>
+              <button class="chat-btn-send" onclick="sendSimulatedMessage()">
+                <i class="fa-solid fa-paper-plane"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="chat-area" id="chat-area-placeholder" style="display: flex; align-items: center; justify-content: center; height: 100%; text-align: center; padding: 2rem; color: var(--text-secondary);">
+            <div>
+              <i class="fa-solid fa-comments" style="font-size: 3rem; margin-bottom: 1rem; color: var(--accent-color);"></i>
+              <h3>Selecciona un cliente de prueba</h3>
+              <p>Haz clic en uno en la lista lateral o crea uno nuevo para empezar a chatear.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- JAVASCRIPT GLOBAL -->
+  <script>
+    let activeTab = 'dashboard';
+    let activeLeadPhone = '';
+    let isTyping = false;
+
+    // --- TAB SWITCHER ---
+    function switchTab(tabId) {
+      activeTab = tabId;
+      // Actualizar menú activo
+      document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+      const tabOrder = ['dashboard', 'leads', 'evolution', 'config', 'knowledge', 'simulator'];
+      const activeItemIndex = tabOrder.indexOf(tabId);
+      if (activeItemIndex >= 0) document.querySelectorAll('.nav-item')[activeItemIndex].classList.add('active');
+
+      // Cambiar títulos del Header
+      const titles = {
+        'dashboard': { t: 'Dashboard & Campañas', s: 'Control de ventas masivas y comportamiento de la IA' },
+        'leads': { t: 'Prospectos / Leads', s: 'Administración de clientes y sus chats reales de WhatsApp' },
+        'evolution': { t: 'Conectar WhatsApp', s: 'Vincular Evolution API escaneando el código QR' },
+        'config': { t: 'Configuración del Bingo', s: 'Actualiza los datos del sorteo e instrucciones de la IA' },
+        'knowledge': { t: 'Base de Conocimiento (RAG)', s: 'Sube documentos para que Sofía los consulte al responder' },
+        'simulator': { t: 'Simulador de Chat', s: 'Ponte a prueba con el agente y evalúa su persuasión' }
+      };
+      
+      document.getElementById('main-title').innerText = titles[tabId]?.t || tabId;
+      document.getElementById('main-subtitle').innerText = titles[tabId]?.s || '';
+
+      // Ocultar todos los contenidos y mostrar el activo
+      document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+      document.getElementById(`tab-${tabId}`).classList.add('active');
+
+      // Recargar datos correspondientes
+      if (tabId === 'leads') {
+        loadLeadsTable();
+      } else if (tabId === 'dashboard') {
+        loadStats();
+      } else if (tabId === 'simulator') {
+        loadSimulatorLeads();
+      } else if (tabId === 'knowledge') {
+        loadKnowledgeDocs();
+      }
+    }
+
+    // --- BINGO CONFIG ---
+    async function saveConfig(event) {
+      event.preventDefault();
+      const payload = {
+        prize_pool: document.getElementById('config-prize-pool').value,
+        ticket_price: parseFloat(document.getElementById('config-ticket-price').value),
+        date_time: document.getElementById('config-date-time').value,
+        payment_details: document.getElementById('config-payment-details').value,
+        special_offers: document.getElementById('config-special-offers').value,
+        rules: document.getElementById('config-rules').value
+      };
+
+      try {
+        const res = await fetch('/api/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.status === 'success') {
+          alert('¡Configuración guardada exitosamente!');
+        } else {
+          alert('Error al guardar: ' + JSON.stringify(data));
+        }
+      } catch (err) {
+        alert('Error conectando al backend: ' + err.message);
+      }
+    }
+
+    // --- LEADS & STATS ---
+    async function loadStats() {
+      try {
+        const res = await fetch('/api/leads');
+        const leads = await res.json();
+        const total = leads.length;
+        const sold = leads.filter(l => l.status === 'Compró').length;
+        const conversion = total > 0 ? Math.round((sold / total) * 100) : 0;
+
+        document.getElementById('stat-total-leads').innerText = total;
+        document.getElementById('stat-sold-leads').innerText = sold;
+        document.getElementById('stat-conversion-rate').innerText = `${conversion}%`;
+      } catch (err) {
+        console.error('Error al cargar estadísticas', err);
+      }
+    }
+
+    async function loadLeadsTable() {
+      const tbody = document.getElementById('leads-table-body');
+      try {
+        const res = await fetch('/api/leads');
+        const leads = await res.json();
+        
+        if (leads.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-secondary);">No hay prospectos registrados aún.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = leads.map(lead => {
+          let dateStr = new Date(lead.updated_at).toLocaleString();
+          let cleanPhone = lead.phone.split('@')[0];
+          let statusClass = lead.status.toLowerCase().replace('/','-').replace(' ','-');
+          return `
+            <tr>
+              <td style="font-weight: 600;">${lead.name || 'Cliente sin nombre'}</td>
+              <td><a href="https://wa.me/${cleanPhone}" target="_blank" style="color: var(--success-color); text-decoration: none;"><i class="fa-brands fa-whatsapp"></i> +${cleanPhone}</a></td>
+              <td><span class="status-badge ${statusClass}">${lead.status}</span></td>
+              <td style="font-size: 0.85rem; color: var(--text-secondary);">${dateStr}</td>
+              <td>
+                <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="openLeadChat('${lead.phone}', '${lead.name || 'Cliente'}')">
+                  <i class="fa-solid fa-comments"></i> Ver Chat
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--danger-color);">Error cargando leads: ${err.message}</td></tr>`;
+      }
+    }
+
+    function openLeadChat(phone, name) {
+      switchTab('simulator');
+      // Esperar que renderice el tab
+      setTimeout(() => {
+        selectSimLead(phone, name);
+      }, 100);
+    }
+
+    // --- EVOLUTION API CONNECT ---
+    async function checkWaStatus(alertUser = false) {
+      const badgeText = document.getElementById('wa-status-text');
+      const badgeDot = document.getElementById('wa-status-dot');
+      try {
+        const res = await fetch('/api/evolution/status');
+        const data = await res.json();
+        
+        let state = data.instance?.state || "NOT_INITIALIZED";
+        if (data.status === "CONNECTED" || state === "CONNECTED" || state === "open") {
+          badgeDot.className = "badge-dot active";
+          badgeText.innerText = "WhatsApp: CONECTADO";
+          document.getElementById('qr-status-label').style.display = "inline-block";
+          document.getElementById('qr-status-label').className = "qr-status-indicator btn-success";
+          document.getElementById('qr-status-label').innerText = "VINCULADO CORRECTAMENTE";
+          document.getElementById('qr-display-box').innerHTML = `
+            <div style="color: var(--success-color); text-align: center;">
+              <i class="fa-solid fa-circle-check" style="font-size: 4rem; margin-bottom: 1rem;"></i>
+              <h3>WhatsApp Activo</h3>
+              <p>El bot está listo para recibir mensajes e interactuar.</p>
+            </div>
+          `;
+        } else if (state === "QRCODE" || data.qrcode || data.base64) {
+          badgeDot.className = "badge-dot inactive";
+          badgeText.innerText = "WhatsApp: Esperando QR";
+          // Si el estatus reporta QR, pintamos el QR
+          const qrCodeBase64 = data.base64 || data.qrcode?.base64;
+          if (qrCodeBase64) {
+            document.getElementById('qr-display-box').innerHTML = `<img src="${qrCodeBase64}" alt="Código QR WhatsApp">`;
+            document.getElementById('qr-status-label').style.display = "inline-block";
+            document.getElementById('qr-status-label').className = "qr-status-indicator btn-secondary";
+            document.getElementById('qr-status-label').innerText = "ESCANEA EL CÓDIGO CON TU CELULAR";
+          }
+        } else {
+          badgeDot.className = "badge-dot inactive";
+          badgeText.innerText = "WhatsApp: Desconectado";
+          
+          const qrBox = document.getElementById('qr-display-box');
+          if (qrBox && (qrBox.innerHTML.includes("Instancia existente") || qrBox.innerHTML.includes("Presiona \"Conectar\"") || qrBox.innerHTML.trim() === "")) {
+            qrBox.innerHTML = `
+              <div style="text-align: center; color: var(--text-secondary);">
+                <i class="fa-solid fa-qrcode" style="font-size: 4rem; margin-bottom: 1rem;"></i>
+                <h3>WhatsApp Desconectado</h3>
+                <p>Presiona el botón "Conectar WhatsApp / Generar QR" para obtener el código QR de vinculación.</p>
+              </div>
+            `;
+            document.getElementById('qr-status-label').style.display = "none";
+          }
+        }
+        
+        if (alertUser) alert(`Estado de WhatsApp: ${state}`);
+      } catch (err) {
+        badgeDot.className = "badge-dot inactive";
+        badgeText.innerText = "WhatsApp: Offline";
+        console.error(err);
+      }
+    }
+
+    async function initiateEvolutionConnect() {
+      const qrBox = document.getElementById('qr-display-box');
+      qrBox.innerHTML = `
+        <div style="color: var(--text-secondary);">
+          <i class="fa-solid fa-spinner fa-spin" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+          <h3>Solicitando QR a Evolution API...</h3>
+          <p>Creando instancia y webhook de forma automática.</p>
+        </div>
+      `;
+      
+      try {
+        const res = await fetch('/api/evolution/connect', { method: 'POST' });
+        const data = await res.json();
+        
+        if (data.status === 'error') {
+          qrBox.innerHTML = `
+            <div style="color: var(--danger-color);">
+              <i class="fa-solid fa-triangle-exclamation" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+              <h3>Error de Conexión</h3>
+              <p>${data.message}</p>
+            </div>
+          `;
+        } else {
+          // El API de Evolution retorna un objeto de conexion que suele tener el qr en base64
+          const qrCodeBase64 = data.base64 || data.qrcode?.base64;
+          if (qrCodeBase64) {
+            qrBox.innerHTML = `<img src="${qrCodeBase64}" alt="Código QR WhatsApp">`;
+            document.getElementById('qr-status-label').style.display = "inline-block";
+            document.getElementById('qr-status-label').className = "qr-status-indicator btn-secondary";
+            document.getElementById('qr-status-label').innerText = "ESCANEA EL CÓDIGO CON TU CELULAR";
+            
+            // Comenzar a consultar el estado cada 5 segundos para detectar el escaneo
+            let checkInterval = setInterval(async () => {
+              const checkRes = await fetch('/api/evolution/status');
+              const checkData = await checkRes.json();
+              if (checkData.instance?.state === 'CONNECTED' || checkData.instance?.state === 'open') {
+                clearInterval(checkInterval);
+                checkWaStatus();
+              }
+            }, 5000);
+          } else {
+            qrBox.innerHTML = `<p style="color: var(--warning-color);">Instancia existente en Evolution API. Consultando su estado...</p>`;
+            setTimeout(() => checkWaStatus(), 2000);
+          }
+        }
+      } catch (err) {
+        qrBox.innerHTML = `<p style="color: var(--danger-color);">Error de red: ${err.message}</p>`;
+      }
+    }
+
+    // --- CAMPAÑAS ---
+    async function loadContacts(onlyChats) {
+      const btnId = onlyChats ? 'btn-load-chats' : 'btn-load-all';
+      const btn = document.getElementById(btnId);
+      const textarea = document.getElementById('campaign-numbers');
+      const label = onlyChats ? 'chats activos' : 'contactos de agenda';
+
+      const originalHTML = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Cargando...`;
+
+      try {
+        const res = await fetch(`/api/evolution/contacts?only_chats=${onlyChats}`);
+        const data = await res.json();
+
+        if (data.status === 'success') {
+          if (data.contacts.length === 0) {
+            alert(`No se encontraron ${label} válidos.`);
+          } else {
+            textarea.value = data.contacts.join('\n');
+            alert(`¡Se cargaron ${data.total} ${label} exitosamente!`);
+          }
+        } else {
+          alert('Error al cargar: ' + (data.message || 'Desconocido'));
+        }
+      } catch (err) {
+        alert('Error de red: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+      }
+    }
+
+    async function runCampaign(event) {
+      event.preventDefault();
+      const numbersText = document.getElementById('campaign-numbers').value;
+      const messageText = document.getElementById('campaign-message').value;
+      const logSpan = document.getElementById('campaign-status-log');
+      const btn = document.getElementById('btn-campaign');
+
+      // Limpiar y separar números
+      const numbers = numbersText.split('\n')
+        .map(num => num.trim().replace('+', ''))
+        .filter(num => num.length > 5);
+
+      if (numbers.length === 0) {
+        alert('Por favor, ingresa al menos un número válido.');
+        return;
+      }
+
+      btn.disabled = true;
+      logSpan.innerText = `Iniciando envío a ${numbers.length} números con pausas antibloqueo...`;
+
+      // Simular un envío secuencial (con delay) para prevenir bloqueos de WhatsApp
+      for (let i = 0; i < numbers.length; i++) {
+        const phone = numbers[i];
+        logSpan.innerText = `Enviando a ${phone} (${i + 1}/${numbers.length})...`;
+        
+        try {
+          const res = await fetch(`/api/leads/${phone}/message`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: messageText })
+          });
+          const data = await res.json();
+          console.log(`Envío a ${phone}:`, data);
+        } catch (err) {
+          console.error(`Error enviando a ${phone}`, err);
+        }
+
+        if (i < numbers.length - 1) {
+          // Pausa aleatoria antiban de entre 8 y 15 segundos para pruebas, o más para producción
+          let delaySeconds = Math.floor(Math.random() * 7) + 8;
+          for (let s = delaySeconds; s > 0; s--) {
+            logSpan.innerText = `Mensaje enviado a ${phone}. Esperando ${s} seg antes del siguiente...`;
+            await new Promise(r => setTimeout(r, 1000));
+          }
+        }
+      }
+
+      logSpan.innerText = `¡Campaña finalizada! Se enviaron ${numbers.length} mensajes.`;
+      document.getElementById('campaign-numbers').value = '';
+      btn.disabled = false;
+      loadStats();
+    }
+
+    // --- CHAT SIMULATOR ---
+    async function loadSimulatorLeads() {
+      const list = document.getElementById('sim-contact-list');
+      try {
+        const res = await fetch('/api/leads');
+        const leads = await res.json();
+        
+        if (leads.length === 0) {
+          list.innerHTML = `<p style="color: var(--text-secondary); padding: 1.25rem; font-size: 0.9rem; text-align: center;">No hay clientes registrados.</p>`;
+          return;
+        }
+
+        list.innerHTML = leads.map(lead => {
+          let initials = (lead.name || 'C').substring(0, 2).toUpperCase();
+          let isActive = lead.phone === activeLeadPhone ? 'active' : '';
+          let lastMsg = lead.notes || 'Conversación vacía';
+          let time = new Date(lead.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          return `
+            <div class="contact-item ${isActive}" onclick="selectSimLead('${lead.phone}', '${lead.name || 'Cliente'}')">
+              <div class="avatar">${initials}</div>
+              <div class="contact-info">
+                <div class="contact-header">
+                  <span class="contact-name">${lead.name || 'Cliente'}</span>
+                  <span class="contact-time">${time}</span>
+                </div>
+                <div class="contact-last-msg">${lead.status}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function createNewSimLead() {
+      const name = prompt("Nombre del cliente de prueba:");
+      if (!name) return;
+      const phone = prompt("Número de teléfono (falso o real, ej: 123456):");
+      if (!phone) return;
+
+      try {
+        const payload = {
+          phone: phone,
+          name: name,
+          message: "¡Hola! Estoy interesado en el Bingo."
+        };
+        const res = await fetch('/api/simulator/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        await loadSimulatorLeads();
+        selectSimLead(phone, name);
+      } catch (err) {
+        alert(err.message);
+      }
+    }
+
+    async function selectSimLead(phone, name) {
+      activeLeadPhone = phone;
+      
+      // Actualizar visual de la lista
+      document.querySelectorAll('.contact-item').forEach(item => item.classList.remove('active'));
+      loadSimulatorLeads(); // Recarga la lista para pintar el activo
+
+      // Configurar header del chat
+      document.getElementById('chat-active-avatar').innerText = name.substring(0, 2).toUpperCase();
+      document.getElementById('chat-active-name').innerText = name;
+      document.getElementById('chat-active-phone').innerText = `+${phone.split('@')[0]}`;
+      
+      // Cargar historial
+      const chatBody = document.getElementById('chat-messages-body');
+      chatBody.innerHTML = '<p style="color: var(--text-secondary); text-align: center;">Cargando conversación...</p>';
+
+      try {
+        const res = await fetch(`/api/leads/${phone}/history`);
+        const messages = await res.json();
+        
+        // Cargar el estado del Lead actual en el selector
+        const leadsRes = await fetch('/api/leads');
+        const leads = await leadsRes.json();
+        const currentLead = leads.find(l => l.phone === phone);
+        if (currentLead) {
+          document.getElementById('chat-lead-status-select').value = currentLead.status;
+        }
+
+        document.getElementById('chat-area-placeholder').style.display = 'none';
+        document.getElementById('chat-area-container').style.display = 'flex';
+
+        if (messages.length === 0) {
+          chatBody.innerHTML = '<p style="color: var(--text-secondary); text-align: center; font-size: 0.85rem;">No hay mensajes previos. Escribe algo para iniciar.</p>';
+          return;
+        }
+
+        chatBody.innerHTML = messages.map(msg => {
+          let side = msg.sender === 'client' ? 'received' : 'sent';
+          let time = new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          return `
+            <div class="message-bubble ${side}">
+              ${msg.content.replace(/\n/g, '<br>')}
+              <div class="message-time">${time}</div>
+            </div>
+          `;
+        }).join('');
+
+        // Hacer scroll al fondo
+        chatBody.scrollTop = chatBody.scrollHeight;
+      } catch (err) {
+        chatBody.innerHTML = `<p style="color: var(--danger-color); text-align: center;">Error: ${err.message}</p>`;
+      }
+    }
+
+    async function updateActiveLeadStatus(newStatus) {
+      if (!activeLeadPhone) return;
+      try {
+        // Encontrar el ID del Lead
+        const resLeads = await fetch('/api/leads');
+        const leads = await resLeads.json();
+        const lead = leads.find(l => l.phone === activeLeadPhone);
+        if (!lead) return;
+
+        await fetch(`/api/leads/${lead.id}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+        loadSimulatorLeads();
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
+    async function sendSimulatedMessage() {
+      const input = document.getElementById('chat-input-field');
+      const text = input.value.trim();
+      if (!text || !activeLeadPhone) return;
+
+      input.value = '';
+
+      const chatBody = document.getElementById('chat-messages-body');
+      
+      // 1. Agregar el mensaje del cliente en UI inmediatamente
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      chatBody.innerHTML += `
+        <div class="message-bubble received">
+          ${text.replace(/\n/g, '<br>')}
+          <div class="message-time">${now}</div>
+        </div>
+      `;
+      chatBody.scrollTop = chatBody.scrollHeight;
+
+      // 2. Mostrar indicador de escritura del bot
+      showTypingIndicator();
+
+      try {
+        // 3. Enviar al backend para Gemini
+        const res = await fetch('/api/simulator/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            phone: activeLeadPhone,
+            name: document.getElementById('chat-active-name').innerText,
+            message: text
+          })
+        });
+        const data = await res.json();
+        
+        // 4. Ocultar indicador de escritura
+        hideTypingIndicator();
+
+        // 5. Agregar la respuesta del bot en UI
+        const botNow = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        chatBody.innerHTML += `
+          <div class="message-bubble sent">
+            ${data.response.replace(/\n/g, '<br>')}
+            <div class="message-time">${botNow}</div>
+          </div>
+        `;
+        chatBody.scrollTop = chatBody.scrollHeight;
+
+        // Actualizar selector de estado si la IA lo reclasificó
+        document.getElementById('chat-lead-status-select').value = data.lead_status;
+
+        // Recargar la lista de leads lateral
+        loadSimulatorLeads();
+      } catch (err) {
+        hideTypingIndicator();
+        chatBody.innerHTML += `
+          <div class="message-bubble sent" style="background: rgba(239, 68, 68, 0.2); color: #f87171;">
+            Ocurrió un error al procesar el mensaje: ${err.message}
+          </div>
+        `;
+        chatBody.scrollTop = chatBody.scrollHeight;
+      }
+    }
+
+    function handleChatInputKey(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendSimulatedMessage();
+      }
+    }
+
+    function showTypingIndicator() {
+      if (isTyping) return;
+      isTyping = true;
+      const chatBody = document.getElementById('chat-messages-body');
+      chatBody.innerHTML += `
+        <div class="typing-indicator" id="bot-typing-indicator">
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+          <div class="typing-dot"></div>
+        </div>
+      `;
+      chatBody.scrollTop = chatBody.scrollHeight;
+    }
+
+    function hideTypingIndicator() {
+      isTyping = false;
+      const indicator = document.getElementById('bot-typing-indicator');
+      if (indicator) {
+        indicator.remove();
+      }
+    }
+
+    // --- AL INICIAR ---
+    window.onload = function() {
+      loadStats();
+      checkWaStatus();
+      // Chequear estatus cada 30 segundos
+      setInterval(checkWaStatus, 30000);
+    }
+
+    // --- BASE DE CONOCIMIENTO RAG ---
+    async function loadKnowledgeDocs() {
+      const list = document.getElementById('rag-doc-list');
+      list.innerHTML = `<p style="color: var(--text-secondary);"><i class="fa-solid fa-spinner fa-spin"></i> Cargando documentos...</p>`;
+      try {
+        const res = await fetch('/api/rag/documents');
+        const data = await res.json();
+        if (data.documents.length === 0) {
+          list.innerHTML = `<p style="color: var(--text-secondary); text-align: center; padding: 2rem;"><i class="fa-solid fa-folder-open" style="font-size:2rem; margin-bottom:0.5rem; display:block;"></i>No hay documentos en la base de conocimiento.<br>Agrega el primero con el formulario de abajo.</p>`;
+          return;
+        }
+        list.innerHTML = data.documents.map(doc => `
+          <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 1rem; background: var(--bg-secondary); border-radius: 8px; margin-bottom: 0.5rem;">
+            <div>
+              <i class="fa-solid fa-file-lines" style="color: var(--primary-color); margin-right: 0.5rem;"></i>
+              <strong>${doc.title}</strong>
+              <span style="color: var(--text-secondary); font-size:0.8rem; margin-left:0.75rem;">${doc.total_chunks} fragmento(s)</span>
+            </div>
+            <button class="btn btn-secondary" onclick="deleteKnowledgeDoc('${doc.doc_id}')" style="padding: 0.25rem 0.6rem; font-size: 0.8rem; color: var(--danger-color);">
+              <i class="fa-solid fa-trash"></i>
+            </button>
+          </div>
+        `).join('');
+      } catch (err) {
+        list.innerHTML = `<p style="color: var(--danger-color);">Error al cargar: ${err.message}</p>`;
+      }
+    }
+
+    async function addKnowledgeDoc(event) {
+      event.preventDefault();
+      const title = document.getElementById('rag-title').value.trim();
+      const content = document.getElementById('rag-content').value.trim();
+      const btn = document.getElementById('btn-rag-add');
+      const statusEl = document.getElementById('rag-add-status');
+
+      if (!title || !content) { alert('El título y el contenido son obligatorios.'); return; }
+
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Indexando...';
+      statusEl.innerText = '';
+
+      try {
+        const formData = new FormData();
+        formData.append('title', title);
+        formData.append('content', content);
+        const res = await fetch('/api/rag/upload', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.status === 'success') {
+          statusEl.style.color = 'var(--success-color)';
+          statusEl.innerText = `✅ Documento "${data.title}" indexado (${data.chunks} fragmento(s))`;
+          document.getElementById('rag-title').value = '';
+          document.getElementById('rag-content').value = '';
+          loadKnowledgeDocs();
+        } else {
+          statusEl.style.color = 'var(--danger-color)';
+          statusEl.innerText = '❌ Error: ' + (data.detail || 'Desconocido');
+        }
+      } catch (err) {
+        statusEl.style.color = 'var(--danger-color)';
+        statusEl.innerText = '❌ Error de red: ' + err.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Agregar a la base de conocimiento';
+      }
+    }
+
+    async function deleteKnowledgeDoc(docId) {
+      if (!confirm('¿Eliminar este documento de la base de conocimiento?')) return;
+      try {
+        const res = await fetch(`/api/rag/documents/${docId}`, { method: 'DELETE' });
+        const data = await res.json();
+        if (data.status === 'success') {
+          loadKnowledgeDocs();
+        } else {
+          alert('Error al eliminar: ' + (data.detail || 'Desconocido'));
+        }
+      } catch (err) {
+        alert('Error de red: ' + err.message);
+      }
+    }
+
+    async function testRagSearch(event) {
+      event.preventDefault();
+      const query = document.getElementById('rag-test-query').value.trim();
+      const resultEl = document.getElementById('rag-test-result');
+      if (!query) return;
+      resultEl.innerText = 'Buscando...';
+      try {
+        const formData = new FormData();
+        formData.append('query', query);
+        const res = await fetch('/api/rag/search', { method: 'POST', body: formData });
+        const data = await res.json();
+        resultEl.innerText = data.context || '(Sin resultados relevantes para esa consulta)';
+      } catch (err) {
+        resultEl.innerText = 'Error: ' + err.message;
+      }
+    }
+  </script>
+</body>
+</html>
