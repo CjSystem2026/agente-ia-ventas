@@ -214,7 +214,8 @@ async def send_whatsapp_presence(phone: str, presence: str = "composing"):
     clean_number = phone.split("@")[0]
     payload = {
         "number": clean_number,
-        "presence": presence
+        "presence": presence,
+        "delay": 1200
     }
     async with httpx.AsyncClient() as client:
         try:
