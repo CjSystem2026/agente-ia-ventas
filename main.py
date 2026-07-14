@@ -2,6 +2,7 @@ import os
 import logging
 import httpx
 import base64
+import asyncio
 from datetime import datetime
 from fastapi import FastAPI, Depends, Request, HTTPException, BackgroundTasks, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -202,6 +203,24 @@ async def send_whatsapp_message(phone: str, text: str):
         except Exception as e:
             logger.error(f"Error de red al conectar con Evolution API: {str(e)}")
             return False
+
+async def send_whatsapp_presence(phone: str, presence: str = "composing"):
+    """Envía un estado de presencia (como 'composing' para escribiendo) al cliente."""
+    url = f"{EVOLUTION_API_URL}/chat/sendPresence/{EVOLUTION_INSTANCE_NAME}"
+    headers = {
+        "apikey": EVOLUTION_API_KEY,
+        "Content-Type": "application/json"
+    }
+    clean_number = phone.split("@")[0]
+    payload = {
+        "number": clean_number,
+        "presence": presence
+    }
+    async with httpx.AsyncClient() as client:
+        try:
+            await client.post(url, json=payload, headers=headers, timeout=5.0)
+        except Exception as e:
+            logger.error(f"Error al enviar presencia a Evolution API: {str(e)}")
 
 @app.post("/api/leads/{phone}/message")
 async def send_manual_message(phone: str, data: ManualMessageSchema, db: Session = Depends(get_db)):
@@ -537,6 +556,16 @@ async def process_webhook_message(payload: dict, db: Session):
     # Actualizar fecha de modificación del lead
     lead.updated_at = datetime.utcnow()
     db.commit()
+
+    # ---- EMULACIÓN HUMANA ----
+    # 1. Enviar estado "Escribiendo..." para simular naturalidad
+    await send_whatsapp_presence(remote_jid, "composing")
+    
+    # 2. Calcular un retraso basado en la longitud del texto (ej: 0.04 seg por carácter)
+    # Entre un mínimo de 2.5 y un máximo de 7.5 segundos
+    delay_seconds = min(max(len(response_text) * 0.04, 2.5), 7.5)
+    logger.info(f"Simulando escritura humana por {delay_seconds:.2f} segundos para {remote_jid}...")
+    await asyncio.sleep(delay_seconds)
 
     # 6. Enviar mensaje de vuelta por WhatsApp
     await send_whatsapp_message(remote_jid, response_text)
